@@ -15,18 +15,6 @@ Original file is located at
 
 import tensorflow as tf
 import numpy as np 
-sys_details = tf.sysconfig.get_build_info()
-cudnn_version = sys_details["cudnn_version"]
-cuda_version = sys_details["cuda_version"]
-cpu_compiler = sys_details["cpu_compiler"]
-
-print(cpu_compiler)
-print(tf.__version__)
-print(cuda_version)
-print(cudnn_version)
-print(np.__version__)
-# print(keras.__version__)
-
 import sys
 import pandas as pd
 import numpy as np
@@ -54,6 +42,10 @@ from keras.optimizers import Adam
 import tensorflow.keras.backend as K
 
 import tensorflow as tf
+from keras.layers.core import Flatten, Dense, Dropout
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.optimizers import SGD
+import cv2, numpy as np
 
 def num_to_hot(X):
   train_X=[]
@@ -138,19 +130,9 @@ def my_pretrained_model(new_model):
   conv_tr = Conv2DTranspose(16, (1, 1), activation='relu', padding='same')(conv_tr)
   conv_tr = Conv2DTranspose(8, (1, 1), activation='relu', padding='same')(conv_tr)
   predictions = Conv2DTranspose(1, (1, 1), activation='relu', padding='same')(conv_tr)
-
-
-
-  # FC1 = Dense(1024, activation='relu')(flat)
-  # FC2 = Dropout(0.4)(FC1)
-  # FC2 = Dense(512, activation='relu')(FC2)
-  # FC2 = Dropout(0.4)(FC2)
-  # FC2 = Dense(128, activation='relu')(FC2)
-  # predictions = Dense(8, activation='softmax', name='main_output')(FC2) 
   new_model2 = keras.Model(inputs=main_input, outputs=predictions)
   adam = Adam(lr=0.003)
   new_model2.compile(loss='mean_squared_error', optimizer=adam) # setting loss and optimizer
-  # new_model2.summary()
 
   return new_model2
 
@@ -244,11 +226,6 @@ org_vgg_model = VGG16(weights='imagenet')
 
 org_vgg_model.summary()
 
-from keras.models import Sequential
-from keras.layers.core import Flatten, Dense, Dropout
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
-from keras.optimizers import SGD
-import cv2, numpy as np
 
 def my_vgg16(weights_path=None):
     model = Sequential()
@@ -522,10 +499,6 @@ def encode_kmer(seq):
               encoded.append([0 for i in range(100)])
               encoded.append([0 for i in range(100)])
         if not flag:
-          print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-          print("seq[i] not found in coulumn")
-          print("seq[i] is :",seq[i])
-          print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
             
     return encoded
 
@@ -876,18 +849,12 @@ def reshape_data(X):
     num_classes = 8
     padding = np.zeros((X.shape[0], X.shape[2], int(cnn_width/2)))
     X = np.dstack((padding, np.swapaxes(X, 1, 2), padding))
-    # print("now x.shape is :", X.shape)
     X = np.swapaxes(X, 1, 2)
-    # print("now x.shape is :", X.shape)
     res = np.zeros((X.shape[0], X.shape[1] - cnn_width + 1, cnn_width, amino_acid_residues))
-    # print("res.shape is :",res.shape)
     for i in range(X.shape[1] - cnn_width + 1):
         res[:, i, :, :] = X[:, i:i+cnn_width, :]
     res = np.reshape(res, (X.shape[0]*(X.shape[1] - cnn_width + 1), cnn_width, amino_acid_residues))
-    # print("now res is :", res.shape)
-    # print(np.count_nonzero(res, axis=(1,2))>(int(cnn_width/2)*amino_acid_residues))
     res = res[np.count_nonzero(res, axis=(1,2))>=(cnn_width*amino_acid_residues-((int(cnn_width/2)*amino_acid_residues)+9*20)), :, :]
-    # print("final res is:",res.shape)
     return res
 
 def resphape_labels(labels):
@@ -949,10 +916,8 @@ def uniq_char(l):
   print(uniq)
 
 def one_mer_protovec_encoding_window(raw_primer,raw_seconder,max_len,one_mer_protovec):
-    raw_primer_train,raw_seconder_train=raw_primer,raw_seconder
-    
+    raw_primer_train,raw_seconder_train=raw_primer,raw_seconder 
     size=15
-
     print("after kmerlists")
     total_l_primer=0
     total_l_seconder=0
