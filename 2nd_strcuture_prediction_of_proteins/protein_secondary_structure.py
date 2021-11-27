@@ -26,20 +26,27 @@ import io
 import gzip
 import csv
 import numpy as np
-
-from keras.models import Sequential
+import keras
+from keras import backend as K
 from keras.layers import Dense
 from keras.utils.vis_utils import plot_model
-model = Sequential()
-model.add(Dense(2, input_dim=1, activation='relu'))
-model.add(Dense(1, activation='sigmoid'))
-plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
-
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.utils.vis_utils import plot_model
-
 import json
+from keras.models import Sequential
+from keras.models import Model
+from keras.layers.core import Dense, Dropout, Activation
+from keras.layers.embeddings import Embedding
+from keras.layers.recurrent import LSTM, GRU
+import tensorflow as tf
+from keras.layers import Concatenate , Flatten, AveragePooling1D, TimeDistributed, Bidirectional, GRU, concatenate,CuDNNLSTM, Dropout,Conv2DTranspose,Lambda
+from keras.layers import Input, Embedding, LSTM, Dense, Convolution2D, GRU, Reshape,MaxPooling2D,Convolution1D,BatchNormalization, Conv1D, MaxPooling1D
+from keras_self_attention import SeqSelfAttention
+from keras.optimizers import Adam
+from keras import regularizers,Sequential
+from keras.regularizers import l2
+from keras.callbacks import EarlyStopping ,ModelCheckpoint
+import matplotlib.pyplot as plt
+import random as rn
+import tensorflow as tf
 
 f = open('deep_prime_to_sec_protovec_encoding.json',)
 one_mer_protovec = json.load(f)
@@ -263,11 +270,6 @@ def encode_kmer(seq):
               encoded.append([0 for i in range(100)])
               encoded.append([0 for i in range(100)])
               encoded.append([0 for i in range(100)])
-        if not flag:
-          print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-          print("seq[i] not found in coulumn")
-          print("seq[i] is :",seq[i])
-          print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
             
     return encoded
 
@@ -390,10 +392,7 @@ def normal_physiochemical_properties_encoding(seq,max_len):
     for i in range(len(v)):
       # (x – min) / (max – min)
       normal_physiochemical_properties[k][i]=(v[i]-min_v)/(max_v-min_v)
-    
-
-
-
+  
 
   out=[]
   for i in range(len(seq)):
@@ -440,10 +439,6 @@ def normal_physiochemical_properties_encoding2(seq):
       # (x – min) / (max – min)
       normal_physiochemical_properties[k][i]=(v[i]-min_v)/(max_v-min_v)
     
-
-
-
-
   out=[]
   for i in range(len(seq)):
     one_hot=[[0 for m in range(9)] for o in range(len(seq[i]))]
@@ -723,42 +718,29 @@ def protovec_encoding_with_svm_prediction(raw_primer,raw_seconder,max_len,kmer_c
           for k in range(len(encd[j])):
             encd[j][k]=float(encd[j][k])
         split_primer[i]=encd
-        if len(split_primer[i])!=max_len:
-          print("i is: ",i)
-          print(split_raw_primer_train[i])
         
-        
-    print("after split and encode")
     total_l_primer=0
     total_l_seconder=0
     for i in range(len(split_primer)):
         total_l_primer+=len(split_primer[i])
         total_l_seconder+=len(split_sekunder[i])
-    print("total_l_primer is :",total_l_primer)
-    print("total_l_seconder is :",total_l_seconder)
 
 
     all_same_length(split_primer,split_sekunder,max_len)    
       
     X=np.array(split_primer)
     X=X.astype(np.float)
-    print("heere shape X is :",X.shape)
     Y=np.array(split_sekunder)
-    print("heere shape Y is :",Y.shape)
     return X,Y
 
 def one_mer_protovec_encoding(raw_primer,raw_seconder,max_len,one_mer_protovec):
     raw_primer_train,raw_seconder_train=raw_primer,raw_seconder
     
-
-    print("after kmerlists")
     total_l_primer=0
     total_l_seconder=0
     for i in range(len(raw_primer_train)):
         total_l_primer+=len(raw_primer_train[i])
         total_l_seconder+=len(raw_seconder_train[i])
-    print("total_l_primer is :",total_l_primer)
-    print("total_l_seconder is :",total_l_seconder)
     avg_len=total_l_primer//len(raw_primer_train)
     
     split_primer=[]
@@ -781,8 +763,6 @@ def one_mer_protovec_encoding(raw_primer,raw_seconder,max_len,one_mer_protovec):
     for i in range(len(split_primer)):
         total_l_primer+=len(split_primer[i])
         total_l_seconder+=len(split_sekunder[i])
-    print("total_l_primer is :",total_l_primer)
-    print("total_l_seconder is :",total_l_seconder)
 
 
     all_same_length(split_primer,split_sekunder,max_len)    
@@ -790,9 +770,7 @@ def one_mer_protovec_encoding(raw_primer,raw_seconder,max_len,one_mer_protovec):
 
     X=np.array(split_primer)
     X=X.astype(np.float)
-    print("heere shape X is :",X.shape)
     Y=np.array(split_sekunder)
-    print("heere shape Y is :",Y.shape)
     return X,Y
 
 def one_mer_protovec_encoding_window(raw_primer,raw_seconder,max_len,one_mer_protovec):
@@ -800,14 +778,11 @@ def one_mer_protovec_encoding_window(raw_primer,raw_seconder,max_len,one_mer_pro
     
     size=15
 
-    print("after kmerlists")
     total_l_primer=0
     total_l_seconder=0
     for i in range(len(raw_primer_train)):
         total_l_primer+=len(raw_primer_train[i])
         total_l_seconder+=len(raw_seconder_train[i])
-    print("total_l_primer is :",total_l_primer)
-    print("total_l_seconder is :",total_l_seconder)
     avg_len=total_l_primer//len(raw_primer_train)
     
     split_primer=[]
@@ -822,16 +797,11 @@ def one_mer_protovec_encoding_window(raw_primer,raw_seconder,max_len,one_mer_pro
 
     split_sekunder=label_to_one_hot2(raw_seconder_train)
     
-        
-        
-    print("after split and encode")
     total_l_primer=0
     total_l_seconder=0
     for i in range(len(split_primer)):
         total_l_primer+=len(split_primer[i])
         total_l_seconder+=len(split_sekunder[i])
-    print("total_l_primer is :",total_l_primer)
-    print("total_l_seconder is :",total_l_seconder)
 
     X=window_padding_data(size, split_primer, 50)
     return np.array(X),np.array(Y)
@@ -932,33 +902,11 @@ X_train.shape,Y_train.shape, X_valid.shape,Y_valid.shape,X_test.shape, Y_test.sh
 
 X_train1.shape,Y_train1.shape, X_valid1.shape,Y_valid1.shape,X_test1.shape, Y_test1.shape
 
-import keras
-from keras.models import Sequential
-from keras.models import Model
-from keras.layers.core import Dense, Dropout, Activation
-from keras.layers.embeddings import Embedding
-from keras.layers.recurrent import LSTM, GRU
-import tensorflow as tf
-from keras.layers import Concatenate , Flatten, AveragePooling1D, TimeDistributed, Bidirectional, GRU, concatenate,CuDNNLSTM, Dropout,Conv2DTranspose,Lambda
-from keras.layers import Input, Embedding, LSTM, Dense, Convolution2D, GRU, Reshape,MaxPooling2D,Convolution1D,BatchNormalization, Conv1D, MaxPooling1D
-from keras_self_attention import SeqSelfAttention
-from keras.optimizers import Adam
-from keras import regularizers,Sequential
-from keras.regularizers import l2
-from keras.callbacks import EarlyStopping ,ModelCheckpoint
-import matplotlib.pyplot as plt
-import numpy as np
-import random as rn
-import pandas as pd
-import tensorflow as tf
 np.random.seed(1)
 rn.seed(1)
 
 session_conf = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
-import keras
-from keras import backend as K
-print(keras.__version__)
-print(tf.__version__)
+
 tf.compat.v1.set_random_seed(0)
 sess = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_conf)
 K.set_session(sess)
@@ -1025,15 +973,10 @@ def deep_aclstm_with_one_input_model(max_len, dim):
 
     lstm_f1 = LSTM(output_dim=300,return_sequences=True,inner_activation='sigmoid',dropout_W=0.5,dropout_U=0.5)(conv2_features)
     lstm_b1 = LSTM(output_dim=300, return_sequences=True, go_backwards=True,inner_activation='sigmoid',dropout_W=0.5,dropout_U=0.5)(conv2_features)
-    # concat_lstm1 = Concatenate(axis=-1)([lstm_f1, lstm_b1])
     lstm_f2 = LSTM(output_dim=300, return_sequences=True,inner_activation='sigmoid',dropout_W=0.5,dropout_U=0.5)(lstm_f1)
     lstm_b2 = LSTM(output_dim=300, return_sequences=True, go_backwards=True,inner_activation='sigmoid',dropout_W=0.5,dropout_U=0.5)(lstm_b1)
-    # concat_lstm12 = Concatenate(axis=-1)([lstm_f2, lstm_b2])
-    # bid2=Bidirectional(LSTM(output_dim=300, return_sequences=True, go_backwards=True,inner_activation='sigmoid',dropout_W=0.5,dropout_U=0.5))(lstm_b1)
     concat_features = Concatenate(axis=-1)([lstm_f2, lstm_b2,conv2_features])
-    # concat_features = Concatenate(axis=-1)([bid2, conv2_features])
 
-    # protein_features= Flatten()(concat_features)
     protein_features=concat_features
     concat_features = Dropout(0.4)(protein_features)
     protein_features = Dense(600,activation='relu')(protein_features)
@@ -1055,8 +998,6 @@ def orginal_deep_ACLSTM(max_len,dim1, dim2):
     main_input = Input(shape=(max_len,), dtype='float32', name='main_input1')
     x = Embedding(output_dim=dim2, input_dim=dim2, input_length=max_len)(main_input)
     auxiliary_input = Input(shape=(max_len,dim1), name='main_input2') 
-    print(main_input.get_shape())
-    print(auxiliary_input.get_shape())
     concat = Concatenate(axis=-1)([x, auxiliary_input])    
 
     conv1_features = Convolution1D(42,1,activation='relu', border_mode='same', W_regularizer=l2(0.001))(concat)
@@ -1097,7 +1038,6 @@ def model_3(max_len,dim):
     conv2_features = Convolution1D(conv_hidden_size,7,border_mode='same', activation='relu')(main_input)
     conv3_features = Convolution1D(conv_hidden_size,11,border_mode='same',activation='relu')(main_input)
     concat_features= Concatenate(axis=-1)([conv1_features, conv2_features, conv3_features])
-    # concat_features=tf.transpose(concat_features , perm=[1,2])
     ggru=Bidirectional(LSTM(rnn_hidden_size, return_sequences=True,inner_activation='relu',dropout_W=0.5,dropout_U=0.5))(concat_features)
     concat_features= Concatenate(axis=-1)([ggru, concat_features])
     concat_features = Flatten()(concat_features)
@@ -1316,10 +1256,9 @@ def build_model_a(max_len,dim,convs=[3, 5, 7], dense_size=200, lstm_size=400, dr
     model.compile(loss={'main_output': 'categorical_crossentropy'}, optimizer=adam, weighted_metrics=['accuracy'],
                   sample_weight_mode='temporal')
 
-
-    # print model
     print(model.summary())
     return model
+
 def build_model_a_window(max_len,dim,convs=[3, 5, 7], dense_size=200, lstm_size=400, dropout_rate=0.5, filter_size=256, lr=0.001):
     l2value=0.0001
     main_input = Input(shape=(max_len,dim),dtype='float32', name='main_input')
@@ -1358,8 +1297,6 @@ def build_model_a_window(max_len,dim,convs=[3, 5, 7], dense_size=200, lstm_size=
     adam = Adam(lr=lr)
     model.compile(loss={'main_output': 'categorical_crossentropy'}, optimizer=adam, weighted_metrics=['accuracy'])
 
-
-    # print model
     print(model.summary())
     return model
 
